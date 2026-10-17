@@ -14,7 +14,7 @@ from .models import (
 from .serializers import (
     StudentSerializer, GroupSerializer, StudentGroupSerializer,
     DisciplineSerializer, CourseGroupSerializer,
-    GradeSerializer, AttendanceSerializer, BonusEventSerializer, BonusEventCreateSerializer, BonusEventReviewSerializer, GradeCreateSerialize,
+    GradeSerializer, AttendanceSerializer, BonusEventSerializer, BonusEventCreateSerializer, BonusEventReviewSerializer, GradeCreateSerializer,
 )
 
 class IsHeadmanOrAdmin(BasePermission):
