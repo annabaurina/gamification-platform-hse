@@ -11,6 +11,11 @@ export async function getPendingBonusEvents(): Promise<BonusEvent[]> {
   return unwrapList<BonusEvent>(data);
 }
 
+export async function getAllBonusEvents(): Promise<BonusEvent[]> {
+  const { data } = await apiClient.get("/bonus-events/");
+  return unwrapList<BonusEvent>(data);
+}
+
 export async function getBonusEventStats(): Promise<BonusEventStats> {
   const { data } = await apiClient.get<BonusEventStats>("/bonus-events/stats/");
   return data;
