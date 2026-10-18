@@ -307,7 +307,7 @@ export default function StarostaPage() {
                       <tr className="border-b border-[#E6E7E8]">
                         <th className="text-left px-4 py-3 text-[#0F2D69] font-semibold text-xs">Студент</th>
                         <th className="px-4 py-3 text-[#939598] font-medium text-xs text-center">Присутствие</th>
-                        <th className="px-4 py-3 text-[#939598] font-medium text-xs text-center">Коины</th>
+                        <th className="px-4 py-3 text-[#939598] font-medium text-xs text-center">Баллы</th>
                       </tr>
                     </thead>
                     <tbody>

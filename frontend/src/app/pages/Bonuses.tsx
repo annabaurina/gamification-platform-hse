@@ -237,7 +237,7 @@ export default function BonusesPage() {
                           style={{ fontFamily: "var(--font-mono)" }}>
                           +{ev.points_awarded}
                         </div>
-                        <div className="text-[#939598] text-xs">коинов</div>
+                        <div className="text-[#939598] text-xs">баллов</div>
                       </>
                     )}
                   </div>

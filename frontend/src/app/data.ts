@@ -155,3 +155,16 @@ export function updateGrade(studentId: string, subjectId: string, grade: number)
     STUDENTS[idx].gpa = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
   }
 }
+
+export interface Me {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  email: string;
+  is_staff: boolean;
+  is_superuser: boolean;
+  student_id: number | null;
+  is_headman: boolean;
+}

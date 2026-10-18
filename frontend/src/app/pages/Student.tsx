@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../auth";
 import { getMyProgress } from "../api/progress.api";
 import { getStudents } from "../api/students.api";
-import { StudentProgress, Student } from "../types";
+import { StudentProgress } from "../types";
+import type { LeaderboardStudent } from "../api/students.api";
 import { TrendingUp, Star, Award, RefreshCw, AlertCircle, Trophy, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router";
 import { AxiosError } from "axios";
@@ -45,7 +46,7 @@ export default function StudentPage() {
   const navigate = useNavigate();
 
   const [progress, setProgress] = useState<StudentProgress | null>(null);
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<LeaderboardStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,7 +136,7 @@ export default function StudentPage() {
                 <p className="font-bold text-2xl" style={{ color: levelColor }}>{progress.level}</p>
               </div>
               <div className="text-right">
-                <p className="text-[#939598] text-xs font-semibold uppercase tracking-wide mb-1">Коины</p>
+                <p className="text-[#939598] text-xs font-semibold uppercase tracking-wide mb-1">Баллы</p>
                 <p className="font-bold text-2xl text-[#0F2D69]" style={{ fontFamily: "var(--font-mono)" }}>
                   {progress.coins}
                 </p>
@@ -158,7 +159,7 @@ export default function StudentPage() {
             <div className="flex justify-between text-xs text-[#939598]">
               <span>{progress.percent.toFixed(0)}% до следующего уровня</span>
               {progress.coinsToNextLevel > 0 && (
-                <span>ещё {progress.coinsToNextLevel} коинов до «{progress.nextLevel}»</span>
+                <span>ещё {progress.coinsToNextLevel} баллов до «{progress.nextLevel}»</span>
               )}
             </div>
           </div>
@@ -167,7 +168,7 @@ export default function StudentPage() {
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             <div className="bg-white rounded-lg border border-[#C7C8CA] px-5 py-4">
               <div className="flex items-start justify-between mb-3">
-                <span className="text-[#939598] text-xs font-semibold uppercase tracking-wide">Мои коины</span>
+                <span className="text-[#939598] text-xs font-semibold uppercase tracking-wide">Мои Баллы</span>
                 <Star size={16} style={{ color: "#374B9B" }} />
               </div>
               <div className="text-[#0F2D69] font-bold text-2xl mb-0.5" style={{ fontFamily: "var(--font-mono)" }}>
@@ -231,7 +232,7 @@ export default function StudentPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-[#0F2D69] text-sm font-semibold truncate">{s.full_name}</div>
-                          <div className="text-[#939598] text-xs">{s.total_points} коинов</div>
+                          <div className="text-[#939598] text-xs">{s.total_points} баллов</div>
                         </div>
                         {isMe && (
                           <span className="text-[#374B9B] text-xs font-bold shrink-0">Вы</span>
@@ -253,7 +254,7 @@ export default function StudentPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-[#0F2D69] text-sm font-semibold truncate">{me.full_name}</div>
-                            <div className="text-[#939598] text-xs">{me.total_points} коинов</div>
+                            <div className="text-[#939598] text-xs">{me.total_points} баллов</div>
                           </div>
                           <span className="text-[#374B9B] text-xs font-bold shrink-0">Вы</span>
                         </div>

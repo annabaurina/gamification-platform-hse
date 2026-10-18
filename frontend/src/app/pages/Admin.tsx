@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import {
   getPendingBonusEvents,
+  getAllBonusEvents,
   getBonusEventStats,
   approveBonusEvent,
   rejectBonusEvent,
@@ -63,7 +64,7 @@ export default function AdminPage() {
     setError(null);
     try {
       const [evs, st] = await Promise.all([
-        getPendingBonusEvents(),
+        getAllBonusEvents(),
         getBonusEventStats(),
       ]);
       setEvents(evs);
@@ -175,7 +176,7 @@ export default function AdminPage() {
                 highlight: false,
               },
               {
-                label: "Коинов выдано",
+                label: "Баллов выдано",
                 value: stats?.total_points_awarded ?? 0,
                 note: "суммарно",
                 highlight: false,
@@ -256,7 +257,7 @@ export default function AdminPage() {
                           style={{ color: "#0F2D69", fontFamily: "var(--font-mono)" }}>
                           +{app.points_awarded}
                         </div>
-                        <div className="text-[#939598] text-xs">коинов</div>
+                        <div className="text-[#939598] text-xs">баллов</div>
                       </div>
                     )}
 
@@ -309,14 +310,14 @@ export default function AdminPage() {
             {modal.action === "approved" && (
               <div className="mb-4">
                 <label className="block text-[#0F2D69] text-sm font-semibold mb-1.5">
-                  Количество коинов
+                  Количество баллов
                 </label>
                 <input
                   type="number"
                   min="0"
                   value={modal.points}
                   onChange={(e) => setModal((m) => m ? { ...m, points: e.target.value } : null)}
-                  placeholder="Введите количество коинов..."
+                  placeholder="Введите количество баллов..."
                   className="w-full border border-[#C7C8CA] rounded px-3 py-2 text-sm text-[#0F2D69] focus:outline-none focus:border-[#374B9B]"
                   style={{ fontFamily: "var(--font-mono)" }}
                 />
@@ -357,7 +358,7 @@ export default function AdminPage() {
                     ? "opacity-40 cursor-not-allowed"
                     : "hover:opacity-90",
                 ].join(" ")}
-                style={{ backgroundColor: modal.action === "approved" ? "#0F2D69" : "#939598" }}>
+                style={{ backgroundColor: "#0F2D69" }}>
                 {modalLoading && (
                   <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
