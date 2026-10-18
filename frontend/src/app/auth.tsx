@@ -1,11 +1,18 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
-import { obtainTokens, decodeJwtPayload } from "./api/auth.api";
-import { getStudents } from "./api/students.api";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+  useCallback,
+} from "react";
+import { getCurrentAccount, obtainTokens, type CurrentAccount } from "./api/auth.api";
 import { setLogoutCallback } from "./api/client";
 
 export type Role = "student" | "starosta" | "admin";
 
 export interface AuthUser {
+  /** Student ID for student/headman, account ID for staff without a student profile. */
   id: string;
   userId: number;
   studentId?: number;
@@ -24,21 +31,44 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function loadStoredUser(): AuthUser | null {
-  try {
-    const s = localStorage.getItem("hse_user");
-    return s ? JSON.parse(s) : null;
-  } catch {
-    return null;
+function mapCurrentAccount(account: CurrentAccount): AuthUser {
+  if (account.role === "unassigned") {
+    throw new Error(
+      "Для этой учётной записи не найден профиль студента и нет административных прав. Обратитесь к администратору.",
+    );
   }
+
+  if (account.role !== "admin" && !account.student) {
+    throw new Error(
+      "Backend не вернул профиль студента для обычного пользователя. Проверьте связь User и Student.",
+    );
+  }
+
+  const student = account.student;
+  const fullName = `${account.first_name ?? ""} ${account.last_name ?? ""}`.trim();
+  const name = student?.full_name || fullName || account.username;
+
+  return {
+    id: String(student?.id ?? account.user_id),
+    userId: account.user_id,
+    studentId: student?.id,
+    name,
+    role: account.role,
+  };
+}
+
+function persistUser(user: AuthUser): void {
+  localStorage.setItem("hse_user", JSON.stringify(user));
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(loadStoredUser);
-  const [token, setToken] = useState<string | null>(
-    () => localStorage.getItem("hse_access_token")
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [token, setToken] = useState<string | null>(() =>
+    localStorage.getItem("hse_access_token"),
   );
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(() =>
+    Boolean(localStorage.getItem("hse_access_token")),
+  );
 
   const logout = useCallback(() => {
     localStorage.removeItem("hse_access_token");
@@ -46,63 +76,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("hse_user");
     setToken(null);
     setUser(null);
+    setLoading(false);
   }, []);
 
-  // Register logout with API client so interceptors can call it
+  // Let the Axios interceptor invalidate React auth state when refresh fails.
   useEffect(() => {
     setLogoutCallback(logout);
   }, [logout]);
 
-  const login = async (username: string, password: string) => {
+  // Revalidate the session and role on reload; never trust a stale role from localStorage.
+  useEffect(() => {
+    if (!localStorage.getItem("hse_access_token")) {
+      setLoading(false);
+      setUser(null);
+      setToken(null);
+      return;
+    }
+
+    let active = true;
+    setLoading(true);
+
+    void (async () => {
+      try {
+        const account = await getCurrentAccount();
+        const authUser = mapCurrentAccount(account);
+        if (!active) return;
+        setUser(authUser);
+        setToken(localStorage.getItem("hse_access_token"));
+        persistUser(authUser);
+      } catch {
+        if (active) logout();
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [logout]);
+
+  const login = async (username: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      // Step 1: obtain JWT tokens
       const tokens = await obtainTokens(username, password);
       localStorage.setItem("hse_access_token", tokens.access);
       localStorage.setItem("hse_refresh_token", tokens.refresh);
       setToken(tokens.access);
 
-      // Step 2: decode JWT to get Django user_id
-      const payload = decodeJwtPayload(tokens.access);
-      const userId = payload.user_id as number | undefined;
-
-      // Step 3: find student profile by user_id to determine role
-      let authUser: AuthUser;
-      try {
-        const students = await getStudents();
-        const myStudent = userId
-          ? students.find((s) => s.user.id === userId)
-          : undefined;
-
-        if (myStudent) {
-          authUser = {
-            id: String(myStudent.id),
-            userId: myStudent.user.id,
-            studentId: myStudent.id,
-            name: myStudent.full_name || `${myStudent.user.first_name} ${myStudent.user.last_name}`.trim() || myStudent.user.username,
-            role: myStudent.is_headman ? "starosta" : "student",
-          };
-        } else {
-          // No student profile found — assume admin (is_staff user)
-          authUser = {
-            id: String(userId ?? 0),
-            userId: userId ?? 0,
-            name: username,
-            role: "admin",
-          };
-        }
-      } catch {
-        // If students endpoint fails (unlikely for authenticated user), treat as admin
-        authUser = {
-          id: String(userId ?? 0),
-          userId: userId ?? 0,
-          name: username,
-          role: "admin",
-        };
-      }
-
-      localStorage.setItem("hse_user", JSON.stringify(authUser));
+      // Role is resolved by the authenticated endpoint, not guessed from a failed list request.
+      const account = await getCurrentAccount();
+      const authUser = mapCurrentAccount(account);
+      persistUser(authUser);
       setUser(authUser);
+    } catch (error) {
+      localStorage.removeItem("hse_access_token");
+      localStorage.removeItem("hse_refresh_token");
+      localStorage.removeItem("hse_user");
+      setToken(null);
+      setUser(null);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -116,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be inside AuthProvider");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be inside AuthProvider");
+  return context;
 }

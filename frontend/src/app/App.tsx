@@ -9,9 +9,12 @@ import BonusesPage from "./pages/Bonuses";
 import AdminPage from "./pages/Admin";
 
 function RequireAuth({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
-  const { user, token } = useAuth();
+  const { user, token, loading } = useAuth();
   const location = useLocation();
 
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Проверяем авторизацию…</div>;
+  }
   if (!token || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
@@ -24,7 +27,10 @@ function RequireAuth({ children, roles }: { children: React.ReactNode; roles?: s
 }
 
 function RoleRedirect() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Проверяем авторизацию…</div>;
+  }
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === "admin") return <Navigate to="/admin" replace />;
   if (user.role === "starosta") return <Navigate to="/starosta" replace />;
