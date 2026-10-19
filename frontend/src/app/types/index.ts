@@ -56,6 +56,7 @@ export interface GradeCreate {
   student: number;
   course_group: number;
   score: number;
+  date?: string;
 }
 
 export interface Attendance {
@@ -84,6 +85,7 @@ export interface BonusEvent {
   type: BonusEventType;
   type_display: string;
   proof: string;
+  points_requested: number;
   points_awarded: number;
   status: BonusEventStatus;
   status_display: string;
@@ -97,6 +99,7 @@ export interface BonusEventCreate {
   description?: string;
   type: BonusEventType;
   proof?: string;
+  points_requested: number;
 }
 
 export interface BonusEventReview {
