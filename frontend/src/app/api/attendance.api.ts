@@ -23,6 +23,7 @@ export async function updateAttendance(
 // Returns: { status: "ok", created: N, total: N }
 export async function markGroupAttendance(payload: {
   course_group_id: number;
+  date: string;
   present_students: number[];
 }): Promise<{ status: string; created: number; total: number }> {
   const { data } = await apiClient.post("/attendance/mark_group/", payload);
