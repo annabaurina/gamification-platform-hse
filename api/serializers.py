@@ -181,25 +181,27 @@ class GradeSerializer(serializers.ModelSerializer):
         serializer_class=StudentSerializer,
     )
     course_group = NestedPrimaryKeyRelatedField(
-        queryset=CourseGroup.objects.select_related("discipline", "group"),
+        queryset=CourseGroup.objects.select_related(
+            "discipline", "group"
+        ),
         serializer_class=CourseGroupSerializer,
     )
-    # The model's verbose_name documents the intended 0–10 grade scale.
+
     score = serializers.IntegerField(min_value=0, max_value=10)
+
+    # Дата должна приниматься от фронтенда при создании и изменении оценки.
+    date = serializers.DateField(required=True)
 
     class Meta:
         model = Grade
         fields = ("id", "student", "course_group", "score", "date")
-        read_only_fields = ("id", "date")
+        read_only_fields = ("id",)
 
 
 class GradeCreateSerializer(GradeSerializer):
-    """Input/output serializer kept for compatibility with GradeViewSet.create."""
-
     class Meta(GradeSerializer.Meta):
         fields = ("id", "student", "course_group", "score", "date")
-        read_only_fields = ("id", "date")
-
+        read_only_fields = ("id",)
 
 class AttendanceSerializer(serializers.ModelSerializer):
     student = NestedPrimaryKeyRelatedField(
@@ -240,6 +242,7 @@ class BonusEventSerializer(serializers.ModelSerializer):
             "type",
             "type_display",
             "proof",
+            "points_requested",
             "points_awarded",
             "status",
             "status_display",
@@ -250,6 +253,7 @@ class BonusEventSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "id",
             "student",
+            "points_requested",
             "points_awarded",
             "status",
             "admin_comment",
@@ -260,13 +264,70 @@ class BonusEventSerializer(serializers.ModelSerializer):
         )
 
 
+MAX_REQUESTED_BONUS_POINTS = 100
+
 class BonusEventCreateSerializer(serializers.ModelSerializer):
+    points_requested = serializers.IntegerField(min_value=1, max_value=MAX_REQUESTED_BONUS_POINTS)
+
     class Meta:
         model = BonusEvent
-        fields = ("id", "title", "description", "type", "proof")
+        fields = ("id", "title", "description", "type", "proof", "points_requested")
         read_only_fields = ("id",)
 
 
 class BonusEventReviewSerializer(serializers.Serializer):
-    points_awarded = serializers.IntegerField(required=False, min_value=0)
+    points_awarded = serializers.IntegerField(required=False, min_value=0, max_value=100)
     admin_comment = serializers.CharField(required=False, allow_blank=True)
+
+
+
+class RegisterSerializer(serializers.Serializer):
+    """Public student registration. New accounts are never staff or headmen."""
+
+    username = serializers.CharField(max_length=150)
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    email = serializers.EmailField()
+    password = serializers.CharField(
+        write_only=True,
+        trim_whitespace=False,
+        min_length=8,
+        style={"input_type": "password"},
+    )
+
+    def validate_username(self, value):
+        value = value.strip()
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("Этот логин уже занят.")
+        return value
+
+    def validate_email(self, value):
+        value = value.strip().lower()
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("Пользователь с такой почтой уже зарегистрирован.")
+        return value
+
+    def validate_password(self, value):
+        try:
+            validate_password(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(list(exc.messages)) from exc
+        return value
+
+    @transaction.atomic
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        user = User.objects.create_user(password=password, **validated_data)
+        # Student has a OneToOne relation to User. No group is assigned here:
+        # group membership can be set by an administrator after registration.
+        return Student.objects.create(user=user, is_headman=False)
+
+    def to_representation(self, instance):
+        return {
+            "id": instance.id,
+            "username": instance.user.username,
+            "first_name": instance.user.first_name,
+            "last_name": instance.user.last_name,
+            "email": instance.user.email,
+            "detail": "Регистрация прошла успешно. Теперь можно войти.",
+        }

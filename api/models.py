@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models import Sum
+from django.utils import timezone
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
@@ -73,7 +74,7 @@ class Grade(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='grades')
     course_group = models.ForeignKey(CourseGroup, on_delete=models.CASCADE)
     score = models.PositiveSmallIntegerField(verbose_name="Оценка (0-10)")
-    date = models.DateField(auto_now_add=True, verbose_name="Дата получения")
+    date = models.DateField(default=timezone.localdate, verbose_name="Дата получения")
 
     def __str__(self):
         return f"{self.student}: {self.score}"
@@ -134,6 +135,10 @@ class BonusEvent(models.Model):
         max_length=500,
         blank=True,
         verbose_name="Подтверждение (ссылка)"
+    )
+    points_requested = models.PositiveIntegerField(
+        default=1,
+        verbose_name="Запрашиваемые баллы"
     )
     points_awarded = models.PositiveIntegerField(
         default=0,

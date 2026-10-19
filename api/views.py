@@ -2,12 +2,13 @@ from django.db import transaction
 from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS, AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import (
@@ -34,6 +35,7 @@ from .serializers import (
     GroupSerializer,
     StudentGroupSerializer,
     StudentSerializer,
+    RegisterSerializer,
 )
 
 
@@ -231,7 +233,7 @@ class GroupViewSet(viewsets.ModelViewSet):
 
 
 class StudentGroupViewSet(viewsets.ModelViewSet):
-    """Admin CRUD; students may read only their own group memberships."""
+    """Admins see all memberships; headmen see their full group; students see only themselves."""
 
     queryset = StudentGroup.objects.select_related("student__user", "group").all()
     serializer_class = StudentGroupSerializer
@@ -239,11 +241,31 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = StudentGroup.objects.select_related("student__user", "group").all()
-        if _is_admin(self.request.user):
+        user = self.request.user
+
+        if _is_admin(user):
             return queryset
-        student = _student_for_user(self.request.user)
+
+        student = _student_for_user(user)
         if student is None:
             return queryset.none()
+
+        # The headman page builds its roster from /student-groups/. If that
+        # endpoint returns only the logged-in student's membership, the UI
+        # can only display/edit that one student. Give headmen read access to
+        # all memberships inside their own group/year pairs, without exposing
+        # other groups to them.
+        if student.is_headman:
+            pairs = _headman_group_year_pairs(user)
+            if not pairs:
+                return queryset.none()
+
+            scope = Q()
+            for group_id, year in pairs:
+                scope |= Q(group_id=group_id, year=year)
+            return queryset.filter(scope).distinct()
+
+        # Ordinary students must not be able to enumerate their classmates.
         return queryset.filter(student=student)
 
 
@@ -382,7 +404,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         operation_description=(
             "Создаёт или обновляет посещаемость всех студентов, записанных "
             "в группу и учебный год выбранного курса. Тело: course_group_id, "
-            "present_students (список ID присутствующих студентов)."
+            "present_students (список ID присутствующих студентов), date (YYYY-MM-DD)."
         ),
     )
     @action(detail=False, methods=["post"])
@@ -394,6 +416,13 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         present_students = request.data.get("present_students")
+        raw_date = request.data.get("date")
+        attendance_date = parse_date(raw_date) if isinstance(raw_date, str) else None
+        if attendance_date is None:
+            return Response(
+                {"date": "Укажите корректную дату в формате YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if (
             isinstance(course_group_id, bool)
@@ -448,7 +477,6 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        today = timezone.localdate()
         created_count = 0
         updated_count = 0
         with transaction.atomic():
@@ -457,7 +485,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 attendance, created = Attendance.objects.get_or_create(
                     student_id=student_id,
                     course_group=course_group,
-                    date=today,
+                    date=attendance_date,
                     defaults={"is_present": is_present},
                 )
                 if created:
@@ -556,6 +584,11 @@ class BonusEventViewSet(viewsets.ModelViewSet):
             if bonus.status != "pending":
                 return Response(
                     {"error": "Заявка уже рассмотрена"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if points_awarded > bonus.points_requested:
+                return Response(
+                    {"points_awarded": f"Нельзя начислить больше запрошенных баллов ({bonus.points_requested})."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             bonus.status = "approved"
@@ -716,4 +749,21 @@ class ProgressViewSet(viewsets.ViewSet):
                 "bestStudent": best_name,
             },
             status=status.HTTP_200_OK,
+        )
+
+
+
+class RegisterView(viewsets.ViewSet):
+    """Public endpoint that creates a regular student account."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def create(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        student = serializer.save()
+        return Response(
+            RegisterSerializer(student).data,
+            status=status.HTTP_201_CREATED,
         )

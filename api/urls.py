@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import StudentViewSet, GroupViewSet, StudentGroupViewSet, DisciplineViewSet, CourseGroupViewSet, GradeViewSet, AttendanceViewSet, BonusEventViewSet, ProgressViewSet
+from .views import RegisterView, StudentViewSet, GroupViewSet, StudentGroupViewSet, DisciplineViewSet, CourseGroupViewSet, GradeViewSet, AttendanceViewSet, BonusEventViewSet, ProgressViewSet
 
 router = DefaultRouter()
 router.register(r'students', StudentViewSet)
@@ -18,6 +18,7 @@ token_oblain_view = TokenObtainPairView.as_view()
 token_refresh_view = TokenRefreshView.as_view() 
 
 urlpatterns = [
+    path('register/', RegisterView.as_view({'post': 'create'}), name='register'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('', include(router.urls)),
