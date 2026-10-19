@@ -9,6 +9,7 @@ import {
 import { BonusEvent, BonusEventStats, BonusEventStatus } from "../types";
 import { CheckCircle, XCircle, X, RefreshCw, AlertCircle } from "lucide-react";
 import { AxiosError } from "axios";
+import { pointsLabel } from "../utils/points";
 
 const STATUS_META: Record<BonusEventStatus, { label: string; color: string }> = {
   pending: { label: "На рассмотрении", color: "#939598" },
@@ -118,7 +119,7 @@ export default function AdminPage() {
   const pendingCount = allEvents.filter((e) => e.status === "pending").length;
 
   return (
-    <div className="px-8 py-8 max-w-5xl" style={{ fontFamily: "var(--font-sans)" }}>
+    <div className="w-full min-w-0 px-8 py-8" style={{ fontFamily: "var(--font-sans)" }}>
       {/* Header */}
       <div className="mb-6 flex items-start justify-between">
         <div>
@@ -235,6 +236,7 @@ export default function AdminPage() {
                         {STATUS_META[app.status].label}
                       </span>
                       <span className="text-[#C7C8CA] text-xs">{app.date}</span>
+                      <span className="text-[#939598] text-xs">Запрошено: {app.points_requested} {pointsLabel(app.points_requested)}</span>
                     </div>
                     <p className="text-[#0F2D69] font-bold text-sm mb-1">{app.title}</p>
                     {app.description && (
@@ -257,7 +259,7 @@ export default function AdminPage() {
                           style={{ color: "#0F2D69", fontFamily: "var(--font-mono)" }}>
                           +{app.points_awarded}
                         </div>
-                        <div className="text-[#939598] text-xs">баллов</div>
+                        <div className="text-[#939598] text-xs">{pointsLabel(app.points_awarded)}</div>
                       </div>
                     )}
 
@@ -310,14 +312,15 @@ export default function AdminPage() {
             {modal.action === "approved" && (
               <div className="mb-4">
                 <label className="block text-[#0F2D69] text-sm font-semibold mb-1.5">
-                  Количество баллов
+                  Начислить баллов (запрошено: {modal.app.points_requested})
                 </label>
                 <input
                   type="number"
-                  min="0"
+                  min="1"
+                  max={modal.app.points_requested}
                   value={modal.points}
                   onChange={(e) => setModal((m) => m ? { ...m, points: e.target.value } : null)}
-                  placeholder="Введите количество баллов..."
+                  placeholder={`До ${modal.app.points_requested} баллов`}
                   className="w-full border border-[#C7C8CA] rounded px-3 py-2 text-sm text-[#0F2D69] focus:outline-none focus:border-[#374B9B]"
                   style={{ fontFamily: "var(--font-mono)" }}
                 />

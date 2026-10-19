@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { useAuth } from "../auth";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { AxiosError } from "axios";
+import { Link } from "react-router";
 
 const HseMark = () => (
   <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -103,6 +104,7 @@ export default function LoginPage() {
             <h2 className="text-[#0F2D69] font-bold text-2xl mb-1">Вход</h2>
             <p className="text-[#939598] text-sm mb-7">Введите учётные данные для входа</p>
 
+
             {error && (
               <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2.5 mb-5">
                 <AlertCircle size={15} className="shrink-0 mt-0.5" />
@@ -165,7 +167,17 @@ export default function LoginPage() {
                   </svg>
                 )}
                 {loading ? "Вход..." : "Войти"}
+                
               </button>
+              <p className="mt-6 text-center text-sm text-[#939598]">
+  Нет аккаунта?{" "}
+  <Link
+    to="/register"
+    className="font-semibold text-[#374B9B] hover:underline"
+  >
+    Зарегистрироваться
+  </Link>
+</p>
             </form>
           </div>
 

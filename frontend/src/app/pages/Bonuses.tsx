@@ -4,6 +4,7 @@ import { getMyBonusEvents, createBonusEvent } from "../api/bonusEvents.api";
 import { BonusEvent, BonusEventType, BonusEventStatus } from "../types";
 import { Plus, X, CheckCircle, Clock, XCircle, RefreshCw, AlertCircle } from "lucide-react";
 import { AxiosError } from "axios";
+import { pointsLabel } from "../utils/points";
 
 const TYPE_OPTIONS: { value: BonusEventType; label: string }[] = [
   { value: "event", label: "Мероприятие" },
@@ -72,6 +73,7 @@ export default function BonusesPage() {
   const [formDesc, setFormDesc] = useState("");
   const [formType, setFormType] = useState<BonusEventType>("event");
   const [formProof, setFormProof] = useState("");
+  const [formPoints, setFormPoints] = useState("10");
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -99,6 +101,11 @@ export default function BonusesPage() {
       setFieldErrors({ title: "Укажите название" });
       return;
     }
+    const requestedPoints = Number(formPoints);
+    if (!Number.isInteger(requestedPoints) || requestedPoints < 1 || requestedPoints > 100) {
+      setFieldErrors({ points_requested: "Укажите от 1 до 100 баллов." });
+      return;
+    }
     setSubmitting(true);
     try {
       await createBonusEvent({
@@ -106,12 +113,14 @@ export default function BonusesPage() {
         description: formDesc.trim() || undefined,
         type: formType,
         proof: formProof.trim() || undefined,
+        points_requested: requestedPoints,
       });
       setShowForm(false);
       setFormTitle("");
       setFormDesc("");
       setFormType("event");
       setFormProof("");
+      setFormPoints("10");
       await load();
     } catch (err) {
       const fe = extractFieldErrors(err);
@@ -135,7 +144,7 @@ export default function BonusesPage() {
   };
 
   return (
-    <div className="px-8 py-8 max-w-4xl" style={{ fontFamily: "var(--font-sans)" }}>
+    <div className="w-full min-w-0 px-8 py-8" style={{ fontFamily: "var(--font-sans)" }}>
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -226,7 +235,7 @@ export default function BonusesPage() {
                       </div>
                     )}
                     <div className="mt-2 text-xs text-[#C7C8CA]">
-                      Подано: {ev.date}
+                      Запрошено: {ev.points_requested} {pointsLabel(ev.points_requested)} · Подано: {ev.date}
                       {ev.reviewed_at && ` · Рассмотрено: ${ev.reviewed_at.split("T")[0]}`}
                     </div>
                   </div>
@@ -237,7 +246,7 @@ export default function BonusesPage() {
                           style={{ fontFamily: "var(--font-mono)" }}>
                           +{ev.points_awarded}
                         </div>
-                        <div className="text-[#939598] text-xs">баллов</div>
+                        <div className="text-[#939598] text-xs">{pointsLabel(ev.points_awarded)}</div>
                       </>
                     )}
                   </div>
@@ -306,6 +315,23 @@ export default function BonusesPage() {
                   rows={4}
                   className="w-full border border-[#C7C8CA] rounded px-3.5 py-2.5 text-sm text-[#0F2D69] bg-white focus:outline-none focus:border-[#374B9B] resize-none placeholder-[#C7C8CA]"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[#0F2D69] text-sm font-semibold mb-1.5">
+                  Запрашиваемые баллы <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  step="1"
+                  value={formPoints}
+                  onChange={(e) => setFormPoints(e.target.value)}
+                  className={["w-full border rounded px-3.5 py-2.5 text-sm text-[#0F2D69] bg-white focus:outline-none focus:border-[#374B9B]", fieldErrors.points_requested ? "border-red-400" : "border-[#C7C8CA]"].join(" ")}
+                />
+                {fieldErrors.points_requested && <p className="text-red-500 text-xs mt-1">{fieldErrors.points_requested}</p>}
+                <p className="text-[#939598] text-xs mt-1">От 1 до 100 баллов. Администратор может одобрить меньше.</p>
               </div>
 
               <div>
