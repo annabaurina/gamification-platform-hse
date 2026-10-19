@@ -7,6 +7,7 @@ import StudentPage from "./pages/Student";
 import StarostaPage from "./pages/Starosta";
 import BonusesPage from "./pages/Bonuses";
 import AdminPage from "./pages/Admin";
+import RegisterPage from "./pages/Register";
 
 function RequireAuth({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
   const { user, token, loading } = useAuth();
@@ -41,6 +42,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/" element={<RoleRedirect />} />
 
       <Route
